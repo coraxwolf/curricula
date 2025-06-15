@@ -60,6 +60,31 @@ function getBuildNumber {
   }
 }
 
+function getBranchName {
+  <#
+    .SYNOPSIS
+      Retrieves the current git branch name.
+    
+    .DESCRIPTION
+      This function returns the name of the current git branch. If git is not available, it returns "unknown".
+  #>
+  [CmdletBinding()]
+  param ()
+
+  try {
+    $branchName = git rev-parse --abbrev-ref HEAD 2>$null
+    if ($LASTEXITCODE -eq 0 -and $branchName) {
+      return $branchName.Trim()
+    }
+    else {
+      return "unknown"
+    }
+  }
+  catch {
+    return "unknown"
+  }
+}
+
 function getBuildState {
   <#
     .SYNOPSIS
@@ -75,7 +100,7 @@ function getBuildState {
     $gitStatus = git status --porcelain 2>$null
     if ($LASTEXITCODE -eq 0) {
       if ($gitStatus) {
-        return "dev"
+        return "dirty"
       }
       else {
         return "clean"
@@ -88,6 +113,40 @@ function getBuildState {
   catch {
     return "unknown"
   }
+}
+
+function generateLDFlags {
+  <#
+    .SYNOPSIS
+      Generates linker flags for embedding version information into binaries.
+    
+    .DESCRIPTION
+      This function generates a string of linker flags that can be used to embed version information such as version number, build number, and build state into the compiled binaries. It retrieves the version from the VERSION file and the build number and state from git.
+    
+    .OUTPUTS
+      A string containing the generated linker flags.
+  #>
+  [CmdletBinding()]
+  param (
+  )
+
+  $Prefix = "github.com/coraxwolf/curricula/config"
+
+  $version = getVersion
+  $buildNumber = getBuildNumber
+  $buildState = getBuildState
+  $buildStatus = if ($buildState -eq "clean") { "release" } else { "dev" }
+  $buildTime = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+
+  $ldFlags = @(
+    "-X ${Prefix}.VERSION=$version"
+    "-X ${Prefix}.BUILD_NUMBER=$buildNumber"
+    "-X ${Prefix}.BUILD_STATE=$buildState"
+    "-X ${Prefix}.BUILD_STATUS=$buildStatus"
+    "-X ${Prefix}.BUILD_TIME=$buildTime"
+  )
+
+  return $ldFlags -join " "
 }
 
 function Invoke-Clean {
@@ -130,38 +189,6 @@ function Invoke-Clean {
   }
   
   Write-Host "Clean completed."
-}
-
-function generateLDFlags {
-  <#
-    .SYNOPSIS
-      Generates linker flags for embedding version information into binaries.
-    
-    .DESCRIPTION
-      This function generates a string of linker flags that can be used to embed version information such as version number, build number, and build state into the compiled binaries. It retrieves the version from the VERSION file and the build number and state from git.
-    
-    .OUTPUTS
-      A string containing the generated linker flags.
-  #>
-  [CmdletBinding()]
-  param (
-  )
-
-  $Prefix = "github.com/coraxwolf/curricula/config"
-
-  $version = getVersion
-  $buildNumber = getBuildNumber
-  $buildState = getBuildState
-  $buildTime = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
-
-  $ldFlags = @(
-    "-X ${Prefix}.VERSION=$version"
-    "-X ${Prefix}.BUILD_NUMBER=$buildNumber"
-    "-X ${Prefix}.BUILD_STATE=$buildState"
-    "-X ${Prefix}.BUILD_TIME=$buildTime"
-  )
-
-  return $ldFlags -join " "
 }
 
 function Invoke-Build {
