@@ -12,6 +12,7 @@
 $PROJECT_NAME = "curricula"
 # $PROJECT_REPO = "github.com/coraxwolf/curricula"
 $BIN_NAME = "curricula"
+$SRC_DIR = ".\src"
 
 function getVersion {
   <#
@@ -193,7 +194,7 @@ function Invoke-Build {
   }
   $ldFlags = generateLDFlags
   Write-Host "Using linker flags: $ldFlags"
-  go build -o $APP_FILE -ldflags $ldFlags .
+  go build -o $APP_FILE -ldflags $ldFlags "$SRC_DIR\."
   # Example build command (replace with actual build logic)
   # Here we just simulate a build process
   Start-Sleep -Seconds 2
@@ -213,7 +214,7 @@ function Start-Run {
   param ()
 
   Write-Host "Running application $PROJECT_NAME ..."
-  go run -ldflags "$(generateLDFlags)" .
+  go run -ldflags "$(generateLDFlags)" "$SRC_DIR\."
 }
 
 function Invoke-Test {
@@ -242,7 +243,7 @@ function Invoke-Test {
     Write-Host "Created output directory: $OutputDirectory"
   }
 
-  $testArgs = @("-v", "./...")
+  $testArgs = @("-v", "$SRC_DIR\...")
   if ($Coverage) {
     $coverageFile = "$OutputDirectory\coverage.out"
     $testArgs += @("-coverprofile=$coverageFile")
